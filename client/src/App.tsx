@@ -35,10 +35,10 @@ function App() {
     fetchQueues();
   }
 
-  const handlefetchMessage = async () => {
-    const response = await getMessage(currentQueue);
+  const handlefetchMessage = async (queueName:string) => {
+    const response = await getMessage(queueName);
     if (response?.status === 204) {
-      setQueueMessage('No messages in queue')
+      setQueueMessage(`No messages in ${queueName}`)
     } else {
       setQueueMessage(response?.data.message)
     }
@@ -53,7 +53,7 @@ function App() {
     <div className="App">
       <PostMessage queueName={currentQueue} handleCreateMessage={handleCreateMessage} />
       <Queue queues={queues} handleQueueCliked={handleQueueCliked} />
-      <ColorButton disabled={!currentQueue} onClick={handlefetchMessage}>Go</ColorButton>
+      <ColorButton disabled={!currentQueue} onClick={()=>handlefetchMessage(currentQueue)}>Go</ColorButton>
       {queueMessage && <p>{queueMessage}</p>}
     </div>
   );

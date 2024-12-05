@@ -1,53 +1,60 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import './App.css';
-import { getTvShows } from './api/apiAction';
-import Search from './components/Search/Search';
-import Genre from './components/Genre/Genre';
-import TvShow from './components/TvShow/TvShow';
-import { TvShowData } from './types/types';
-import ShowDetails from './components/ShowDetails/ShowDetails';
-import { CircularProgress } from '@mui/material';
+import { createMessage, getMessage, getQueues } from './api/apiAction';
+import { QueueData } from './types/types';
+import Queue from './components/QueueList/QueueList';
+import PostMessage from './components/PostMessage/PostMessage';
+import { Button, ButtonProps, styled } from '@mui/material';
 
-
+const ColorButton = styled(Button)<ButtonProps>(({ theme }) => ({
+  marginTop: '20px',
+  color: '#003246',
+  backgroundColor: 'fff',
+  '&:hover': {
+    border: 'solid #003246 0.5px',
+    boxShadow: '13px 15px 22.5px #ff005d1a'
+  },
+}));
 
 function App() {
-  const [tvShows, setTvShows] = useState<TvShowData[]>();
-  const [genres, setGenres] = useState<string[]>();
-  const [tvShowsByGenres, setTvShowsByGenres] = useState<TvShowData[]>();
-  const [showDetails, setShowDetails] = useState(false);
-  const [currnetShow, setCurrentShow] = useState<TvShowData>();
-  const [progress,setProgress] = useState(false);
+  const [queues, setQueues] = useState<QueueData[]>();
+  const [currentQueue, setCurrnetQueue] = useState<string>('');
+  const [queueMessage, setQueueMessage] = useState<string>('');
 
-  const handleShowDetails = useCallback((show: TvShowData) => {
-    setCurrentShow(show);
-    setShowDetails(true);
-  },[]);
+  useEffect(() => {
+    fetchQueues();
+  }, [])
 
+  const fetchQueues = async () => {
+    const response = await getQueues('/queues');
+    setQueues(response);
+  };
 
-  const getShows = useCallback(async(search:string) => {
-    setProgress(true);
-    const result = await getTvShows(`/tvshow?q=${search}`);
-    let genresMovie: string[] = [];
-    if(result){
-      setProgress(false);
-      setTvShows(result.map((element:any) => element.show));
-      genresMovie = Array.from(new Set (result.flatMap((element:any) => element.show.genres)));
-      setGenres(genresMovie);
-      setTvShowsByGenres([]);
+  const handleCreateMessage = async(message: string) => {
+    await createMessage(currentQueue, message)
+    fetchQueues();
+  }
+
+  const handlefetchMessage = async () => {
+    const response = await getMessage(currentQueue);
+    if (response?.status === 204) {
+      setQueueMessage('No messages in queue')
+    } else {
+      setQueueMessage(response?.data.message)
     }
-  },[]);
+    fetchQueues();
+  }
+
+  const handleQueueCliked = useCallback((name: string) => {
+    setCurrnetQueue(name);
+  }, []);
 
   return (
     <div className="App">
-      <Search getShows={getShows}/>
-      { progress && 
-        <CircularProgress style={{marginTop:50}}/>
-      }
-      <Genre genres={genres} setFilteredTvShow={setTvShowsByGenres} tvShows={tvShows}/>
-      <TvShow tvShows={tvShowsByGenres} handleShowDetails={handleShowDetails}/>
-      {showDetails &&
-        <ShowDetails open={showDetails} closeModal={setShowDetails} show={currnetShow}/>
-      }
+      <PostMessage queueName={currentQueue} handleCreateMessage={handleCreateMessage} />
+      <Queue queues={queues} handleQueueCliked={handleQueueCliked} />
+      <ColorButton disabled={!currentQueue} onClick={handlefetchMessage}>Go</ColorButton>
+      {queueMessage && <p>{queueMessage}</p>}
     </div>
   );
 }
